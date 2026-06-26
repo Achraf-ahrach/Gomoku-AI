@@ -15,7 +15,7 @@ def main():
             if move.lower() == 'q':
                 print("Exiting game. Goodbye!")
                 break
-                
+            
             r, c = map(int, move.split())
             
             if game.place_stone(r, c):
