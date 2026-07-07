@@ -32,11 +32,9 @@ public:
                   const std::string& winner_msg, const SettingsState& settings, int human_player,
                   bool show_ai_timer, double ai_time_ms, int ai_depth);
 
-    // Bouton "Suggest Move" -- visible en mode Humain vs Humain, exigence
-    // OBLIGATOIRE du sujet (Chapitre III) : "Against another human player
-    // ... but with a move-suggestion feature."
-    // Retourne le rectangle du bouton (pour la détection de clic dans main.cpp).
-    sf::FloatRect draw_suggest_button(sf::RenderWindow& window, sf::Vector2f mouse_pos, bool enabled);
+    // Popup affiché en fin de partie avec un bouton pour quitter.
+    sf::FloatRect draw_game_over_popup(sf::RenderWindow& window, const std::string& winner_msg,
+                                       sf::Vector2f mouse_pos);
 
     // Dessine un marqueur visuel (anneau coloré) sur la case suggérée par
     // l'IA, sans jouer le coup -- le joueur reste libre de le suivre ou non.
@@ -48,7 +46,7 @@ public:
     std::vector<Hitbox> hitbox_difficulty;
     sf::FloatRect hitbox_confirm;
     sf::FloatRect hitbox_cancel;
-    sf::FloatRect hitbox_suggest;
+    sf::FloatRect hitbox_exit;
 
     static std::string player_color_name(int player_id);
     static sf::Color player_stone_color(int player_id);

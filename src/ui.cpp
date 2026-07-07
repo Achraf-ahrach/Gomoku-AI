@@ -174,7 +174,7 @@ void GameUI::draw_settings_menu(sf::RenderWindow& window, const SettingsState& s
     overlay.setFillColor(sf::Color(255, 255, 255, 18));
     window.draw(overlay);
 
-    sf::FloatRect card_rect({90.f, 55.f}, {(float)WINDOW_WIDTH - 180.f, 420.f});
+    sf::FloatRect card_rect({90.f, 42.f}, {(float)WINDOW_WIDTH - 180.f, 420.f});
     sf::RectangleShape card(sf::Vector2f(card_rect.size.x, card_rect.size.y));
     card.setPosition(card_rect.position);
     card.setFillColor(COLOR_CARD);
@@ -197,7 +197,6 @@ void GameUI::draw_settings_menu(sf::RenderWindow& window, const SettingsState& s
     sf::FloatRect row_play_against({row_left, row_top}, {row_width, row_height});
     sf::FloatRect row_play_as({row_left, row_top + (row_height + row_gap)}, {row_width, row_height});
     sf::FloatRect row_difficulty({row_left, row_top + 2 * (row_height + row_gap)}, {row_width, row_height});
-
     hitbox_play_against.clear();
     hitbox_play_as.clear();
     hitbox_difficulty.clear();
@@ -280,17 +279,42 @@ void GameUI::draw_hud(sf::RenderWindow& window, const GomokuBoard& board, bool g
         snprintf(buf, sizeof(buf), "AI time: %.1f ms | depth: %d", ai_time_ms, ai_depth);
         draw_text(window, buf, (float)(WINDOW_WIDTH - MARGIN - 260), 78.f, 14, COLOR_TEXT);
     }
+
+    sf::RectangleShape footer(sf::Vector2f((float)WINDOW_WIDTH, 34.f));
+    footer.setPosition({0.f, (float)WINDOW_HEIGHT - 34.f});
+    footer.setFillColor(sf::Color(255, 255, 255, 90));
+    window.draw(footer);
+
+    draw_text(window, "T: Suggest move    X: Undo    E: Exit", (float)MARGIN, (float)WINDOW_HEIGHT - 27.f,
+              14, COLOR_TEXT, true);
 }
 
-sf::FloatRect GameUI::draw_suggest_button(sf::RenderWindow& window, sf::Vector2f mouse_pos, bool enabled) {
-    // Bouton place dans le HUD, en haut a droite -- exigence OBLIGATOIRE
-    // du sujet pour le mode Humain vs Humain (Chapitre III).
-    sf::FloatRect rect({(float)(WINDOW_WIDTH - MARGIN - 150), 78.f}, {150.f, 32.f});
+sf::FloatRect GameUI::draw_game_over_popup(sf::RenderWindow& window, const std::string& winner_msg,
+                                           sf::Vector2f mouse_pos) {
+    sf::RectangleShape overlay(sf::Vector2f((float)WINDOW_WIDTH, (float)WINDOW_HEIGHT));
+    overlay.setFillColor(sf::Color(0, 0, 0, 90));
+    window.draw(overlay);
 
-    bool hovered = enabled && rect.contains(mouse_pos);
-    draw_button(window, rect, "Suggest Move", false, enabled, hovered);
+    sf::FloatRect popup_rect({(float)WINDOW_WIDTH / 2.f - 210.f, (float)WINDOW_HEIGHT / 2.f - 95.f}, {420.f, 190.f});
+    sf::RectangleShape popup(sf::Vector2f(popup_rect.size.x, popup_rect.size.y));
+    popup.setPosition(popup_rect.position);
+    popup.setFillColor(COLOR_CARD);
+    popup.setOutlineColor(COLOR_CARD_EDGE);
+    popup.setOutlineThickness(4.f);
+    window.draw(popup);
 
-    return rect;
+    draw_text(window, winner_msg, popup_rect.position.x + 28.f, popup_rect.position.y + 22.f,
+              22, COLOR_TEXT);
+    draw_text(window, "The game is over.", popup_rect.position.x + 28.f, popup_rect.position.y + 58.f,
+              16, COLOR_TEXT, false);
+    draw_text(window, "Click Exit to close the program.", popup_rect.position.x + 28.f,
+              popup_rect.position.y + 82.f, 16, COLOR_TEXT, false);
+
+    sf::FloatRect exit_rect({popup_rect.position.x + 95.f, popup_rect.position.y + 124.f}, {230.f, 44.f});
+    hitbox_exit = exit_rect;
+    draw_button(window, exit_rect, "Exit", true, true, exit_rect.contains(mouse_pos));
+
+    return exit_rect;
 }
 
 void GameUI::draw_suggestion_marker(sf::RenderWindow& window, int row, int col) {

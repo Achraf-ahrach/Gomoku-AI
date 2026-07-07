@@ -10,6 +10,8 @@
 #include <SFML/Graphics.hpp>
 #include <string>
 #include <cmath>
+#include <cstdlib>
+#include <vector>
 
 int main() {
     sf::RenderWindow window(
@@ -41,6 +43,7 @@ int main() {
     // le joueur reste libre de suivre la suggestion ou de jouer ailleurs.
     bool has_suggestion = false;
     int suggested_row = -1, suggested_col = -1;
+    std::vector<MoveRecord> move_history;
 
     auto reset_game_from_menu = [&]() {
         board = GomokuBoard();
@@ -48,6 +51,7 @@ int main() {
         winner_msg.clear();
         has_ai_result = false;
         has_suggestion = false;
+        move_history.clear();
         if (settings.play_against == "Computer") {
             human_player = (settings.play_as == "White") ? PLAYER_ONE : PLAYER_TWO;
             computer_player = (human_player == PLAYER_ONE) ? PLAYER_TWO : PLAYER_ONE;
@@ -60,6 +64,7 @@ int main() {
     auto resolve_move = [&](int row, int col) -> bool {
         MoveRecord record = apply_move(board, row, col);
         if (!record.valid) return false;
+        move_history.push_back(record);
 
         // Un coup vient d'être joué -- la suggestion précédente n'est
         // plus pertinente pour la nouvelle position.
@@ -89,6 +94,36 @@ int main() {
         }
         // apply_move a déjà fait switch_player() en interne (comme
         // place_stone le fait en Python) -- rien d'autre à faire ici.
+        return true;
+    };
+
+    auto undo_last_move = [&]() -> bool {
+        if (move_history.empty()) return false;
+
+        int moves_to_undo = 1;
+        if (settings.play_against == "Computer") {
+            if (move_history.size() >= 2) {
+                moves_to_undo = 2;
+            }
+        }
+
+        while (moves_to_undo > 0 && !move_history.empty()) {
+            undo_move(board, move_history.back());
+            move_history.pop_back();
+            moves_to_undo--;
+        }
+
+        game_over = false;
+        winner_msg.clear();
+        has_ai_result = false;
+        has_suggestion = false;
+        suggested_row = -1;
+        suggested_col = -1;
+
+        if (settings.play_against == "Computer" && move_history.empty()) {
+            board.current_player = human_player;
+        }
+
         return true;
     };
 
@@ -165,12 +200,7 @@ int main() {
                     bool is_computer_turn = (settings.play_against == "Computer" &&
                                               board.current_player == computer_player);
 
-                    // Clic sur le bouton "Suggest Move" -- uniquement en
-                    // mode Humain vs Humain (obligatoire selon le sujet).
-                    if (settings.play_against == "Human" &&
-                        ui.hitbox_suggest.contains(mouse_pos)) {
-                        request_suggestion();
-                    } else if (!is_computer_turn) {
+                    if (!is_computer_turn) {
                         int mx = mouseButtonPressed->position.x, my = mouseButtonPressed->position.y;
                         int adjusted_y = my - TOP_PANEL;
                         int c = (int)std::round((mx - MARGIN) / (double)CELL_SIZE);
@@ -181,6 +211,34 @@ int main() {
                                 resolve_move(r, c);
                             }
                         }
+                    }
+                } else if (game_state == PLAYING && game_over) {
+                    if (ui.hitbox_exit.contains(mouse_pos)) {
+                        window.close();
+                    }
+                }
+            } else if (const auto* keyPressed = event->getIf<sf::Event::KeyPressed>()) {
+                if (keyPressed->code == sf::Keyboard::Key::E) {
+                    window.close();
+                    continue;
+                }
+
+                if (game_state != PLAYING) {
+                    continue;
+                }
+
+                if (keyPressed->code == sf::Keyboard::Key::T) {
+                    bool can_suggest = !game_over && (
+                        settings.play_against == "Human" ||
+                        (settings.play_against == "Computer" && board.current_player == human_player)
+                    );
+                    if (can_suggest) {
+                        request_suggestion();
+                    }
+                } else if (keyPressed->code == sf::Keyboard::Key::X) {
+                    if (undo_last_move()) {
+                        // Si on revient sur une position où c'est au bot de jouer,
+                        // le tour IA sera relancé naturellement en bas de boucle.
                     }
                 }
             }
@@ -199,16 +257,13 @@ int main() {
             ui.draw_hud(window, board, game_over, winner_msg, settings, human_player,
                         has_ai_result, last_ai_time_ms, last_ai_depth);
 
-            // Bouton de suggestion -- visible uniquement en mode Humain
-            // vs Humain (exigence obligatoire du sujet).
-            if (settings.play_against == "Human") {
-                sf::Vector2i mp = sf::Mouse::getPosition(window);
-                ui.hitbox_suggest = ui.draw_suggest_button(
-                    window, sf::Vector2f((float)mp.x, (float)mp.y), !game_over);
-            }
-
             if (has_suggestion) {
                 ui.draw_suggestion_marker(window, suggested_row, suggested_col);
+            }
+
+            if (game_over) {
+                sf::Vector2i mp = sf::Mouse::getPosition(window);
+                ui.draw_game_over_popup(window, winner_msg, sf::Vector2f((float)mp.x, (float)mp.y));
             }
         }
 
