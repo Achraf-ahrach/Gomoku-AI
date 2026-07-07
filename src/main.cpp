@@ -12,7 +12,9 @@
 #include <cmath>
 
 int main() {
-    sf::RenderWindow window(sf::VideoMode(WINDOW_WIDTH, WINDOW_HEIGHT), "Gomoku AI - C++");
+    sf::RenderWindow window(
+        sf::VideoMode(sf::Vector2u((unsigned int)WINDOW_WIDTH, (unsigned int)WINDOW_HEIGHT)),
+        "Gomoku AI - C++");
     window.setFramerateLimit(60);
 
     GameUI ui;
@@ -122,15 +124,18 @@ int main() {
     };
 
     while (window.isOpen()) {
-        sf::Event event;
-        while (window.pollEvent(event)) {
-            if (event.type == sf::Event::Closed) {
+        while (const auto event = window.pollEvent()) {
+            if (event->is<sf::Event::Closed>()) {
                 window.close();
             }
 
-            if (event.type == sf::Event::MouseButtonPressed &&
-                event.mouseButton.button == sf::Mouse::Left) {
-                sf::Vector2f mouse_pos((float)event.mouseButton.x, (float)event.mouseButton.y);
+            if (const auto* mouseButtonPressed = event->getIf<sf::Event::MouseButtonPressed>()) {
+                if (mouseButtonPressed->button != sf::Mouse::Button::Left) {
+                    continue;
+                }
+
+                sf::Vector2f mouse_pos((float)mouseButtonPressed->position.x,
+                                       (float)mouseButtonPressed->position.y);
 
                 if (game_state == MENU) {
                     for (auto& hb : ui.hitbox_play_against) {
@@ -166,7 +171,7 @@ int main() {
                         ui.hitbox_suggest.contains(mouse_pos)) {
                         request_suggestion();
                     } else if (!is_computer_turn) {
-                        int mx = event.mouseButton.x, my = event.mouseButton.y;
+                        int mx = mouseButtonPressed->position.x, my = mouseButtonPressed->position.y;
                         int adjusted_y = my - TOP_PANEL;
                         int c = (int)std::round((mx - MARGIN) / (double)CELL_SIZE);
                         int r = (int)std::round((adjusted_y - MARGIN) / (double)CELL_SIZE);

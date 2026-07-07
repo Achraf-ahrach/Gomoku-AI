@@ -18,6 +18,12 @@ CXX = g++
 CXXFLAGS = -std=c++17 -O2 -Wall -Wextra -MMD -MP
 LDFLAGS = -lsfml-graphics -lsfml-window -lsfml-system
 
+SFML_PREFIX ?= $(shell brew --prefix sfml 2>/dev/null)
+ifneq ($(SFML_PREFIX),)
+CXXFLAGS += -I$(SFML_PREFIX)/include
+LDFLAGS += -L$(SFML_PREFIX)/lib -Wl,-rpath,$(SFML_PREFIX)/lib
+endif
+
 all: $(NAME)
 
 $(NAME): $(OBJS)

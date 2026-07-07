@@ -7,6 +7,10 @@ GameUI::GameUI() : font_loaded_(false) {
     // On essaie plusieurs chemins de police courants, pour rester portable
     // entre Linux (dev), Windows et macOS (machine de l'équipière).
     const char* font_paths[] = {
+        "/System/Library/Fonts/Supplemental/Arial.ttf",
+        "/System/Library/Fonts/Supplemental/Verdana.ttf",
+        "/System/Library/Fonts/Helvetica.ttc",
+        "/System/Library/Fonts/SFNS.ttf",
         "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
         "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
         "C:/Windows/Fonts/arialbd.ttf",
@@ -15,7 +19,7 @@ GameUI::GameUI() : font_loaded_(false) {
     };
 
     for (const char* path : font_paths) {
-        if (font_.loadFromFile(path)) {
+        if (font_.openFromFile(path)) {
             font_loaded_ = true;
             break;
         }
@@ -29,13 +33,11 @@ GameUI::GameUI() : font_loaded_(false) {
 void GameUI::draw_text(sf::RenderWindow& window, const std::string& text, float x, float y,
                         unsigned int size, sf::Color color, bool bold) {
     if (!font_loaded_) return;
-    sf::Text t;
-    t.setFont(font_);
-    t.setString(text);
+    sf::Text t(font_, text, size);
     t.setCharacterSize(size);
     t.setFillColor(color);
     t.setStyle(bold ? sf::Text::Bold : sf::Text::Regular);
-    t.setPosition(x, y);
+    t.setPosition({x, y});
     window.draw(t);
 }
 
@@ -52,23 +54,23 @@ void GameUI::render_board_background(sf::RenderWindow& window, bool draw_stones,
     window.clear(COLOR_WHITE);
 
     sf::RectangleShape board_rect(sf::Vector2f((float)WINDOW_WIDTH, (float)(WINDOW_HEIGHT - TOP_PANEL)));
-    board_rect.setPosition(0.f, (float)TOP_PANEL);
+    board_rect.setPosition({0.f, (float)TOP_PANEL});
     board_rect.setFillColor(COLOR_WOOD);
     window.draw(board_rect);
 
     // Lignes du plateau
     for (int i = 0; i < BOARD_SIZE; i++) {
         sf::Vertex hline[] = {
-            sf::Vertex(sf::Vector2f((float)MARGIN, (float)(TOP_PANEL + MARGIN + i * CELL_SIZE)), COLOR_LINE),
-            sf::Vertex(sf::Vector2f((float)(WINDOW_WIDTH - MARGIN), (float)(TOP_PANEL + MARGIN + i * CELL_SIZE)), COLOR_LINE),
+            {{(float)MARGIN, (float)(TOP_PANEL + MARGIN + i * CELL_SIZE)}, COLOR_LINE},
+            {{(float)(WINDOW_WIDTH - MARGIN), (float)(TOP_PANEL + MARGIN + i * CELL_SIZE)}, COLOR_LINE},
         };
-        window.draw(hline, 2, sf::Lines);
+        window.draw(hline, 2, sf::PrimitiveType::Lines);
 
         sf::Vertex vline[] = {
-            sf::Vertex(sf::Vector2f((float)(MARGIN + i * CELL_SIZE), (float)(TOP_PANEL + MARGIN)), COLOR_LINE),
-            sf::Vertex(sf::Vector2f((float)(MARGIN + i * CELL_SIZE), (float)(WINDOW_HEIGHT - MARGIN)), COLOR_LINE),
+            {{(float)(MARGIN + i * CELL_SIZE), (float)(TOP_PANEL + MARGIN)}, COLOR_LINE},
+            {{(float)(MARGIN + i * CELL_SIZE), (float)(WINDOW_HEIGHT - MARGIN)}, COLOR_LINE},
         };
-        window.draw(vline, 2, sf::Lines);
+        window.draw(vline, 2, sf::PrimitiveType::Lines);
     }
 
     // Points d'etoile (hoshi)
@@ -77,8 +79,8 @@ void GameUI::render_board_background(sf::RenderWindow& window, bool draw_stones,
         for (int c : star_points) {
             sf::CircleShape dot(3.f);
             dot.setFillColor(COLOR_LINE);
-            dot.setOrigin(3.f, 3.f);
-            dot.setPosition((float)(MARGIN + c * CELL_SIZE), (float)(TOP_PANEL + MARGIN + r * CELL_SIZE));
+            dot.setOrigin({3.f, 3.f});
+            dot.setPosition({(float)(MARGIN + c * CELL_SIZE), (float)(TOP_PANEL + MARGIN + r * CELL_SIZE)});
             window.draw(dot);
         }
     }
@@ -94,8 +96,8 @@ void GameUI::render_board_background(sf::RenderWindow& window, bool draw_stones,
             float cy = (float)(TOP_PANEL + MARGIN + r * CELL_SIZE);
 
             sf::CircleShape stone(16.f);
-            stone.setOrigin(16.f, 16.f);
-            stone.setPosition(cx, cy);
+            stone.setOrigin({16.f, 16.f});
+            stone.setPosition({cx, cy});
             stone.setFillColor(player_stone_color(cell_value));
             sf::Color outline = (cell_value == PLAYER_ONE) ? sf::Color(35, 35, 35) : sf::Color(240, 240, 240);
             stone.setOutlineColor(outline);
@@ -116,20 +118,20 @@ sf::FloatRect GameUI::draw_button(sf::RenderWindow& window, sf::FloatRect rect, 
         );
     }
 
-    sf::RectangleShape box(sf::Vector2f(rect.width, rect.height));
-    box.setPosition(rect.left, rect.top);
+    sf::RectangleShape box(sf::Vector2f(rect.size.x, rect.size.y));
+    box.setPosition(rect.position);
     box.setFillColor(button_color);
     box.setOutlineColor(sf::Color(182, 155, 120));
     box.setOutlineThickness(2.f);
     window.draw(box);
 
     if (font_loaded_) {
-        sf::Text label(text, font_, 16);
+        sf::Text label(font_, text, 16);
         label.setFillColor(enabled ? COLOR_BUTTON_TEXT : COLOR_DISABLED_TEXT);
         label.setStyle(sf::Text::Bold);
         sf::FloatRect bounds = label.getLocalBounds();
-        label.setPosition(rect.left + (rect.width - bounds.width) / 2.f - bounds.left,
-                           rect.top + (rect.height - bounds.height) / 2.f - bounds.top);
+        label.setPosition({rect.position.x + (rect.size.x - bounds.size.x) / 2.f - bounds.position.x,
+                           rect.position.y + (rect.size.y - bounds.size.y) / 2.f - bounds.position.y});
         window.draw(label);
     }
 
@@ -141,21 +143,21 @@ std::vector<sf::FloatRect> GameUI::draw_segmented_row(
         const std::vector<std::string>& options, const std::string& selected_value,
         sf::FloatRect row_rect, bool enabled, sf::Vector2f mouse_pos) {
 
-    draw_text(window, label, row_rect.left, row_rect.top + row_rect.height / 2.f - 10.f,
+    draw_text(window, label, row_rect.position.x, row_rect.position.y + row_rect.size.y / 2.f - 10.f,
               18, enabled ? COLOR_TEXT : COLOR_DISABLED_TEXT);
 
     float label_width = 180.f;
-    float button_area_x = row_rect.left + label_width + 12.f;
-    float button_area_width = row_rect.left + row_rect.width - button_area_x;
+    float button_area_x = row_rect.position.x + label_width + 12.f;
+    float button_area_width = row_rect.position.x + row_rect.size.x - button_area_x;
     float gap = 10.f;
     int count = (int)options.size();
     float button_width = (button_area_width - gap * (count - 1)) / count;
     float button_height = 46.f;
-    float button_y = row_rect.top + row_rect.height / 2.f - button_height / 2.f;
+    float button_y = row_rect.position.y + row_rect.size.y / 2.f - button_height / 2.f;
 
     std::vector<sf::FloatRect> rects;
     for (int i = 0; i < count; i++) {
-        sf::FloatRect r(button_area_x + i * (button_width + gap), button_y, button_width, button_height);
+        sf::FloatRect r({button_area_x + i * (button_width + gap), button_y}, {button_width, button_height});
         bool is_selected = (options[i] == selected_value);
         bool is_hovered = enabled && r.contains(mouse_pos);
         draw_button(window, r, options[i], is_selected, enabled, is_hovered);
@@ -172,29 +174,29 @@ void GameUI::draw_settings_menu(sf::RenderWindow& window, const SettingsState& s
     overlay.setFillColor(sf::Color(255, 255, 255, 18));
     window.draw(overlay);
 
-    sf::FloatRect card_rect(90.f, 55.f, (float)WINDOW_WIDTH - 180.f, 420.f);
-    sf::RectangleShape card(sf::Vector2f(card_rect.width, card_rect.height));
-    card.setPosition(card_rect.left, card_rect.top);
+    sf::FloatRect card_rect({90.f, 55.f}, {(float)WINDOW_WIDTH - 180.f, 420.f});
+    sf::RectangleShape card(sf::Vector2f(card_rect.size.x, card_rect.size.y));
+    card.setPosition(card_rect.position);
     card.setFillColor(COLOR_CARD);
     card.setOutlineColor(COLOR_CARD_EDGE);
     card.setOutlineThickness(4.f);
     window.draw(card);
 
-    draw_text(window, "Game Settings", card_rect.left + card_rect.width / 2.f - 90.f,
-              card_rect.top + 20.f, 24, COLOR_TEXT);
+    draw_text(window, "Game Settings", card_rect.position.x + card_rect.size.x / 2.f - 90.f,
+              card_rect.position.y + 20.f, 24, COLOR_TEXT);
     draw_text(window, "Choose how you want to play before starting.",
-              card_rect.left + card_rect.width / 2.f - 160.f, card_rect.top + 58.f,
+              card_rect.position.x + card_rect.size.x / 2.f - 160.f, card_rect.position.y + 58.f,
               14, sf::Color(92, 68, 42));
 
-    float row_top = card_rect.top + 78.f;
-    float row_left = card_rect.left + 28.f;
-    float row_width = card_rect.width - 56.f;
+    float row_top = card_rect.position.y + 78.f;
+    float row_left = card_rect.position.x + 28.f;
+    float row_width = card_rect.size.x - 56.f;
     float row_height = 68.f;
     float row_gap = 10.f;
 
-    sf::FloatRect row_play_against(row_left, row_top, row_width, row_height);
-    sf::FloatRect row_play_as(row_left, row_top + (row_height + row_gap), row_width, row_height);
-    sf::FloatRect row_difficulty(row_left, row_top + 2 * (row_height + row_gap), row_width, row_height);
+    sf::FloatRect row_play_against({row_left, row_top}, {row_width, row_height});
+    sf::FloatRect row_play_as({row_left, row_top + (row_height + row_gap)}, {row_width, row_height});
+    sf::FloatRect row_difficulty({row_left, row_top + 2 * (row_height + row_gap)}, {row_width, row_height});
 
     hitbox_play_against.clear();
     hitbox_play_as.clear();
@@ -223,22 +225,22 @@ void GameUI::draw_settings_menu(sf::RenderWindow& window, const SettingsState& s
     }
 
     float button_row_top = row_top + 3 * (row_height + row_gap) + 10.f;
-    sf::FloatRect confirm_rect(row_left, button_row_top, row_width / 2.f - 10.f, 58.f);
-    sf::FloatRect cancel_rect(row_left + row_width / 2.f + 10.f, button_row_top, row_width / 2.f - 10.f, 58.f);
+    sf::FloatRect confirm_rect({row_left, button_row_top}, {row_width / 2.f - 10.f, 58.f});
+    sf::FloatRect cancel_rect({row_left + row_width / 2.f + 10.f, button_row_top}, {row_width / 2.f - 10.f, 58.f});
 
     hitbox_confirm = confirm_rect;
     hitbox_cancel = cancel_rect;
 
     draw_button(window, confirm_rect, "Confirm", true, true, confirm_rect.contains(mouse_pos));
 
-    sf::RectangleShape cancel_box(sf::Vector2f(cancel_rect.width, cancel_rect.height));
-    cancel_box.setPosition(cancel_rect.left, cancel_rect.top);
+    sf::RectangleShape cancel_box(sf::Vector2f(cancel_rect.size.x, cancel_rect.size.y));
+    cancel_box.setPosition(cancel_rect.position);
     cancel_box.setFillColor(COLOR_CANCEL);
     cancel_box.setOutlineColor(sf::Color(112, 56, 50));
     cancel_box.setOutlineThickness(2.f);
     window.draw(cancel_box);
-    draw_text(window, "Cancel", cancel_rect.left + cancel_rect.width / 2.f - 30.f,
-              cancel_rect.top + cancel_rect.height / 2.f - 10.f, 18, COLOR_WHITE);
+    draw_text(window, "Cancel", cancel_rect.position.x + cancel_rect.size.x / 2.f - 30.f,
+              cancel_rect.position.y + cancel_rect.size.y / 2.f - 10.f, 18, COLOR_WHITE);
 }
 
 void GameUI::draw_hud(sf::RenderWindow& window, const GomokuBoard& board, bool game_over,
@@ -283,7 +285,7 @@ void GameUI::draw_hud(sf::RenderWindow& window, const GomokuBoard& board, bool g
 sf::FloatRect GameUI::draw_suggest_button(sf::RenderWindow& window, sf::Vector2f mouse_pos, bool enabled) {
     // Bouton place dans le HUD, en haut a droite -- exigence OBLIGATOIRE
     // du sujet pour le mode Humain vs Humain (Chapitre III).
-    sf::FloatRect rect((float)(WINDOW_WIDTH - MARGIN - 150), 78.f, 150.f, 32.f);
+    sf::FloatRect rect({(float)(WINDOW_WIDTH - MARGIN - 150), 78.f}, {150.f, 32.f});
 
     bool hovered = enabled && rect.contains(mouse_pos);
     draw_button(window, rect, "Suggest Move", false, enabled, hovered);
@@ -298,8 +300,8 @@ void GameUI::draw_suggestion_marker(sf::RenderWindow& window, int row, int col) 
     float cy = (float)(TOP_PANEL + MARGIN + row * CELL_SIZE);
 
     sf::CircleShape ring(14.f);
-    ring.setOrigin(14.f, 14.f);
-    ring.setPosition(cx, cy);
+    ring.setOrigin({14.f, 14.f});
+    ring.setPosition({cx, cy});
     ring.setFillColor(sf::Color::Transparent);
     ring.setOutlineColor(sf::Color(220, 50, 50));  // rouge vif, bien visible
     ring.setOutlineThickness(3.f);
