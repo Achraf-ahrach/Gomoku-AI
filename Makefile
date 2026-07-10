@@ -1,9 +1,3 @@
-# Makefile pour le projet Gomoku
-#
-# Règles obligatoires selon le sujet : $(NAME), all, clean, fclean, re.
-# Le programme ne doit PAS relinker inutilement -- on utilise la
-# compilation incrémentale standard (fichiers objets + suivi des
-# dépendances via -MMD/-MP) pour ne recompiler que ce qui a changé.
 
 NAME = Gomoku
 
